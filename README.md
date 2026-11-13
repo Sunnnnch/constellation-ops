@@ -1,15 +1,38 @@
-# Constellation Ops · 星图运维
+<h1><img src="./plugins/vps-ops/assets/vps-ops.png" alt="" width="36" height="36"> Constellation Ops · 星图运维</h1>
 
 星图是本地 Codex 插件，使用现有 OpenSSH 连接云服务器、GPU 实例、物理机和支持 SSH 的 NAS。设备面板支持分组、搜索、增删改、定时巡检和到期提醒标记。也可通过 Codex 检查系统资源、读取 systemd 日志、传文件和开本机 SSH 隧道。
+
+[安装到 ChatGPT 桌面版的 Codex](#install) · [打开独立网页面板](#打开设备面板)
+
+![星图的设备面板，显示四台演示设备及 SSH 延迟和出网 Ping 曲线](./docs/images/dashboard-demo.png)
+
+<a name="install"></a>
+
+## 安装到 ChatGPT 桌面版的 Codex
+
+准备 ChatGPT 桌面版、Codex CLI、Git、Python 3.10+（可通过 `python` 启动）和 OpenSSH 客户端。[桌面版安装](https://learn.chatgpt.com/docs/quickstart?setup=app) · [Codex CLI 安装](https://learn.chatgpt.com/docs/cli)
+
+在终端执行以下两行即可从 GitHub 安装。
+
+```shell
+codex plugin marketplace add Sunnnnch/constellation-ops
+codex plugin add vps-ops@vps-ops-local
+```
+
+重新打开 ChatGPT 桌面版，在 Codex 的本地会话里打开侧栏的「星图」。也可以只执行第一行，再从桌面版的「插件」目录选择「星图运维本地目录」，点击安装「Constellation Ops · 星图运维」。
+
+星图通过本机 Python 和 SSH 连接设备，此插件包适用于桌面版的本地会话。[OpenAI 桌面插件说明](https://developers.openai.com/plugins/deploy/desktop-only)
 
 ## 打开设备面板
 
 安装插件后，在 Codex 桌面版左侧选择 **星图**，或从会话的内容标签打开 **星图**。也可以在本地会话中说「打开星图设备面板」。内置面板由本地 MCP 进程启动，可与浏览器面板共用主机清单。
 
-Windows 上双击本目录的 `start-dashboard.cmd`，也可以在本目录运行下列命令。面板可以独立运行。密钥和 SSH 别名使用系统 OpenSSH，表单内密码登录需要下面的 Python 依赖。
+使用独立网页面板时，先克隆项目。Windows 上可双击仓库里的 `start-dashboard.cmd`，也可以在终端运行下列命令。密钥和 SSH 别名使用系统 OpenSSH。
 
 ```powershell
-python '.\plugins\vps-ops\skills\vps-ops\scripts\dashboard.py' --open
+git clone https://github.com/Sunnnnch/constellation-ops.git
+cd constellation-ops
+python plugins/vps-ops/skills/vps-ops/scripts/dashboard.py --open
 ```
 
 浏览器打开 `http://127.0.0.1:8765/`。面板默认每 60 秒采集一次，可手动刷新。点击顶栏的「查看示例」可以预览四台模拟设备。端口冲突时加 `--port 0`，使用终端打印的地址。按 Ctrl+C 结束本机面板。
@@ -79,20 +102,6 @@ python '.\plugins\vps-ops\skills\vps-ops\scripts\dashboard.py' --open
 在 Windows 上可启用「自动上传」或「双向同步」，选择每 5、15、30 或 60 分钟检查一次。WebDAV 登录和同步密码保存在本机 Windows 凭据管理器。面板进程运行期间才会执行定时任务。双向同步可应用单侧的普通配置变更。遇到两端同时修改、远端删除或待恢复的私钥时会暂停，等手动预览处理。SSH 登录密码、主机信任、监控历史和监控服务凭据留在本机。新导入设备的定时测速需在这台电脑上启用。
 
 在「主页 → 监控集成」选择 Komari 或 Beszel，测试并保存对应面板的连接，从设备详情绑定节点。设备卡片显示来源、在线状态、CPU、内存和磁盘，详情可查看负载历史。Komari 节点还可显示 Ping 历史。Beszel 可用仅共享所需系统的普通或只读账号登录。监控服务的凭据由 Windows 凭据管理器保管。
-
-## 安装
-
-准备 Python 3.10+ 和 OpenSSH 9+ 客户端。Windows 上可用 `python --version`、`ssh -V` 和 `Get-Command scp` 检查。
-
-克隆仓库，然后在项目目录注册本地插件源。
-
-```powershell
-git clone https://github.com/Sunnnnch/constellation-ops.git
-cd constellation-ops
-codex plugin marketplace add .
-```
-
-在 Codex 桌面版的插件目录选择 **星图运维本地目录**，安装 **Constellation Ops · 星图运维**。也可运行 `codex plugin add vps-ops@vps-ops-local`。若插件源或入口未显示，完全退出并重新打开 Codex 桌面版。插件使用本机 SSH，请在本地聊天中调用。[Codex 侧栏入口文档](https://developers.openai.com/plugins/build/extensions#sidebar-apps)
 
 ## 连接服务器
 
