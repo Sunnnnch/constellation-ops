@@ -3,6 +3,12 @@
 </p>
 
 <p align="center">
+  <a href="#install"><img src="https://img.shields.io/badge/Codex-Desktop-1558ce" alt="Codex 桌面版"></a>
+  <a href="#install"><img src="https://img.shields.io/badge/Python-3.10%2B-087d58" alt="Python 3.10 及以上"></a>
+  <a href="https://github.com/Sunnnnch/constellation-ops/stargazers"><img src="https://img.shields.io/github/stars/Sunnnnch/constellation-ops?style=social" alt="GitHub Stars"></a>
+</p>
+
+<p align="center">
   <a href="#install"><strong>安装到 ChatGPT 桌面版的 Codex</strong></a> ·
   <a href="#preview">查看面板预览</a> ·
   <a href="#打开设备面板">打开独立网页面板</a>
