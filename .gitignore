@@ -1,0 +1,34 @@
+# Python runtime files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Local settings, credentials, and runtime data
+.env
+.env.*
+!.env.example
+.ssh/
+*.key
+*.pem
+*.ppk
+*.pfx
+hosts.json
+known_hosts
+known_hosts.old
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+*.log
+
+# Local build and editor files
+build/
+dist/
+node_modules/
+.DS_Store
+Thumbs.db
+Desktop.ini

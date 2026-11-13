@@ -1,0 +1,20 @@
+{
+  "name": "vps-ops-local",
+  "interface": {
+    "displayName": "星图运维本地目录"
+  },
+  "plugins": [
+    {
+      "name": "vps-ops",
+      "source": {
+        "source": "local",
+        "path": "./plugins/vps-ops"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="vps-csrf" content="__VPS_CSRF_TOKEN__">
+  <title>Constellation Ops · 星图运维</title>
+  <link rel="icon" href="/vps-ops.png" type="image/png">
+  <link rel="stylesheet" href="/vendor/xterm.css">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/flags.css">
+  <link rel="stylesheet" href="/tunnels.css">
+  <script src="/vendor/xterm.js" defer></script>
+  <script src="/vendor/xterm-fit.js" defer></script>
+  <script src="/latency-chart.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/probes.js" defer></script>
+  <script src="/outbound-probes.js" defer></script>
+  <script src="/outbound-bulk.js" defer></script>
+  <script src="/files.js" defer></script>
+  <script src="/komari.js" defer></script>
+  <script src="/webdav.js" defer></script>
+  <script src="/tunnels.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主内容</a>
+  <div class="layout">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <img class="brand-mark" src="/vps-ops.png" width="32" height="32" alt="">
+          <strong>星图</strong>
+        </div>
+        <div id="workspace-tabs" class="workspace-tabs" role="tablist" aria-label="星图标签页">
+          <button type="button" class="workspace-tab" id="overview-tab" role="tab" aria-selected="true" aria-controls="device-overview">主页</button>
+          <button type="button" class="workspace-tab" id="files-tab" role="tab" aria-selected="false" aria-controls="device-files" tabindex="-1">文件管理</button>
+          <button type="button" class="workspace-tab" id="sync-tab" role="tab" aria-selected="false" aria-controls="sync-workspace" tabindex="-1">同步</button>
+          <button type="button" class="workspace-tab" id="tunnel-tab" role="tab" aria-selected="false" aria-controls="tunnel-workspace" tabindex="-1">隧道</button>
+          <div id="ssh-tabs" class="ssh-tabs" role="presentation"></div>
+        </div>
+        <button type="button" class="demo-toggle" id="demo-toggle"><span id="demo-label">查看示例</span></button>
+      </div>
+    </header>
+
+    <main id="main" class="main">
+      <h1 class="sr-only">星图</h1>
+      <div id="device-overview" role="tabpanel" aria-labelledby="overview-tab">
+      <div class="overview-actions" role="group" aria-label="设备操作">
+        <button type="button" id="refresh-all" class="button secondary" disabled><span class="refresh-glyph" aria-hidden="true">↻</span><span>刷新</span></button>
+        <button type="button" id="outbound-bulk-open" class="button secondary" aria-haspopup="dialog" aria-controls="outbound-bulk-dialog" disabled>批量设置测速地区</button>
+        <button type="button" id="inventory-open" class="button secondary" disabled>导入 / 导出</button>
+        <button type="button" id="komari-open" class="button secondary" aria-haspopup="dialog" disabled>监控集成</button>
+        <button type="button" id="add-host" class="button primary" disabled><span aria-hidden="true">＋</span>添加设备</button>
+      </div>
+
+      <div id="demo-banner" class="banner demo-banner" hidden>
+        <strong>示例模式</strong><span>以下为模拟设备和指标。</span>
+        <button type="button" id="demo-exit" class="text-button">返回我的设备</button>
+      </div>
+      <p id="connection-error" class="banner error-banner" role="alert" hidden></p>
+
+      <section class="summary" aria-label="设备汇总">
+        <article class="summary-card">
+          <div class="summary-label"><span class="summary-icon green" aria-hidden="true">◉</span>在线设备</div>
+          <div class="summary-value"><strong id="online-count">—</strong><span id="host-total"></span></div>
+          <p id="online-note">等待设备数据</p>
+        </article>
+        <article class="summary-card">
+          <div class="summary-label"><span class="summary-icon blue" aria-hidden="true">⌁</span>高负载设备</div>
+          <div class="summary-value"><strong id="high-count">—</strong></div>
+          <p>CPU 或内存使用率 ≥ 85%</p>
+        </article>
+        <article class="summary-card">
+          <div class="summary-label"><span class="summary-icon violet" aria-hidden="true">⇅</span>累计流量</div>
+          <div class="summary-value"><strong id="traffic-total">—</strong></div>
+          <p>已采集设备的网卡累计计数</p>
+        </article>
+        <article class="summary-card">
+          <div class="summary-label"><span class="summary-icon amber" aria-hidden="true">◷</span>即将到期</div>
+          <div class="summary-value"><strong id="expiry-count">—</strong></div>
+          <p>30 天内到期的设备</p>
+        </article>
+      </section>
+
+      <section class="devices" aria-labelledby="devices-title">
+        <header class="section-header">
+          <div class="section-title">
+            <h2 id="devices-title">设备列表</h2>
+            <span class="count-badge" id="filtered-count">0</span>
+          </div>
+          <p id="poll-caption"></p>
+        </header>
+        <div class="toolbar">
+          <label class="search">
+            <span aria-hidden="true">⌕</span>
+            <span class="sr-only">搜索设备</span>
+            <input id="search" type="search" placeholder="搜索名称、SSH 主机或分组" autocomplete="off">
+          </label>
+          <label class="select-label">
+            <span class="sr-only">分组</span>
+            <select id="group-filter"><option value="">全部分组</option></select>
+          </label>
+          <label class="select-label">
+            <span class="sr-only">设备状态</span>
+            <select id="status-filter">
+              <option value="">全部状态</option>
+              <option value="online">在线</option>
+              <option value="attention">需要检查</option>
+              <option value="expiring">即将到期</option>
+              <optgroup label="具体连接状态">
+                <option value="unreachable">不可达</option>
+                <option value="auth_required">认证失败</option>
+                <option value="password_required">待输入密码</option>
+                <option value="unknown">尚未检查</option>
+              </optgroup>
+            </select>
+          </label>
+          <label class="metric-display-control">
+            <span>指标显示</span>
+            <select id="metric-display" disabled>
+              <option value="gauges">仪表盘</option>
+              <option value="text">文字</option>
+            </select>
+          </label>
+        </div>
+        <div id="cards" class="cards" aria-busy="true"></div>
+        <div id="empty-state" class="empty-state">
+          <span class="empty-icon" aria-hidden="true">▦</span>
+          <h3 id="empty-title">正在读取设备</h3>
+          <p id="empty-description">面板准备就绪后将显示你的设备列表。</p>
+          <div id="empty-actions" class="empty-actions" hidden>
+            <button type="button" id="empty-add" class="button primary">添加设备</button>
+            <button type="button" id="empty-demo" class="button secondary">查看示例</button>
+          </div>
+        </div>
+      </section>
+      </div>
+      <section id="device-files" class="device-files" role="tabpanel" aria-labelledby="files-tab" hidden>
+        <div class="files-workspace">
+          <aside class="files-device-pane" aria-labelledby="files-device-title">
+            <h2 id="files-device-title">VPS 列表</h2>
+            <label class="search" id="files-device-search-wrap" hidden>
+              <span aria-hidden="true">⌕</span>
+              <span class="sr-only">搜索文件管理设备</span>
+              <input id="files-device-search" type="search" placeholder="搜索名称、地址或分组" autocomplete="off">
+            </label>
+            <div id="files-device-list" class="files-device-list"></div>
+            <div id="files-device-empty" class="files-device-empty">
+              <p id="files-device-message" role="status">正在读取设备…</p>
+              <div class="empty-actions">
+                <button type="button" id="files-device-add" class="button primary" hidden>添加设备</button>
+                <button type="button" id="files-device-demo-exit" class="button secondary" hidden>返回我的设备</button>
+              </div>
+            </div>
+          </aside>
+          <div id="files-right-pane" class="files-right-pane">
+            <div id="files-browser-empty" class="files-browser-empty">
+              <p>选择一台 VPS 查看远程目录。</p>
+            </div>
+            <section id="files-browser" aria-labelledby="files-host" hidden>
+              <header class="files-browser-header">
+                <div class="files-browser-host">
+                  <h2 id="files-host" tabindex="-1"></h2>
+                  <p id="files-host-address"></p>
+                </div>
+                <button type="button" class="button primary" id="files-upload" disabled>上传文件</button>
+              </header>
+              <div class="files-browser-body form-fields">
+                <div id="files-auth" class="files-auth" hidden>
+                  <label>SSH 密码<input id="files-password" type="password" maxlength="512" autocomplete="new-password" spellcheck="false"></label>
+                  <button id="files-connect" type="button" class="button secondary">连接并查看目录</button>
+                </div>
+                <div id="files-navigation" class="files-navigation" hidden>
+                  <div class="files-path">
+                    <label>远程目录<input id="files-path" maxlength="4096" placeholder="/" spellcheck="false" autocomplete="off"></label>
+                    <button type="button" id="files-open-path" class="button secondary">打开</button>
+                  </div>
+                  <div class="files-toolbar">
+                    <div class="inventory-actions">
+                      <button type="button" id="files-home" class="button secondary">主目录</button>
+                      <button type="button" id="files-parent" class="button secondary">上一级</button>
+                      <button type="button" id="files-refresh" class="button secondary">刷新</button>
+                    </div>
+                    <label class="files-filter"><span class="sr-only">筛选当前目录</span><input id="files-filter" type="search" placeholder="筛选当前目录" autocomplete="off"></label>
+                  </div>
+                </div>
+                <p id="files-status" class="connection-result" role="status" hidden></p>
+                <button type="button" class="button secondary" id="files-retry" hidden>重试</button>
+                <p id="files-truncated" class="field-hint" hidden>目录中的项目较多，只显示部分结果。知道子目录路径时，可以直接输入打开。</p>
+                <div id="files-table-wrap" class="files-table-wrap" hidden>
+                  <table class="files-table" aria-label="远程目录内容">
+                    <thead><tr><th scope="col">名称</th><th scope="col">大小</th><th scope="col" class="files-modified">修改时间</th><th scope="col"><span class="sr-only">操作</span></th></tr></thead>
+                    <tbody id="files-entries"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+      <section id="sync-workspace" role="tabpanel" aria-labelledby="sync-tab" hidden>
+        <p id="sync-unavailable" class="banner" role="status">正在读取本机设备清单…</p>
+      </section>
+      <section id="tunnel-workspace" role="tabpanel" aria-labelledby="tunnel-tab" hidden></section>
+      <div id="ssh-workspace" class="ssh-workspace" hidden></div>
+    </main>
+    <footer class="page-footer">
+      <span class="local-note"><span class="dot" aria-hidden="true"></span>本地 SSH 监控</span>
+      <a class="geo-credit" href="https://db-ip.com/" target="_blank" rel="noopener noreferrer">IP 定位数据 · DB-IP</a>
+    </footer>
+  </div>
+
+  <dialog id="host-dialog" class="dialog host-dialog" aria-labelledby="host-dialog-title">
+    <form id="host-form" autocomplete="off">
+      <header class="dialog-header">
+        <div><h2 id="host-dialog-title">添加设备</h2><p>填写 SSH 连接信息。保存前可以测试连接。</p></div>
+        <button type="button" class="icon-button" data-close="host-dialog" aria-label="关闭">×</button>
+      </header>
+      <div class="dialog-body form-fields">
+        <label>设备名称<input name="name" maxlength="80" placeholder="例如：GPU 实例" required></label>
+        <div class="field-grid host-address-fields">
+          <label>主机 / IP<input name="host" maxlength="320" placeholder="例如：gpu-vps 或 192.0.2.10" required spellcheck="false"></label>
+          <label>端口<input name="port" type="number" min="1" max="65535" placeholder="使用配置"></label>
+        </div>
+        <div class="field-grid">
+          <label>用户名<input name="username" maxlength="64" placeholder="例如：ubuntu" spellcheck="false" aria-describedby="auth-mode-hint"></label>
+          <label>认证方式
+            <select name="auth_mode" aria-describedby="auth-mode-hint">
+              <option value="alias">SSH 配置 / 别名</option>
+              <option value="key">本机私钥</option>
+              <option value="password">密码</option>
+            </select>
+          </label>
+        </div>
+        <p id="auth-mode-hint" class="field-hint">用户名和端口留空时沿用 OpenSSH 配置。</p>
+        <div id="identity-file-row" class="identity-file-row" hidden>
+          <label>私钥文件路径<input name="identity_file" maxlength="1024" placeholder="选择文件或粘贴本机路径" spellcheck="false"></label>
+          <button type="button" id="host-key-file" class="button secondary">选择文件</button>
+        </div>
+        <div id="password-fields" class="password-fields" hidden>
+          <div class="identity-file-row">
+            <label>SSH 密码<input id="password" type="password" maxlength="512" autocomplete="new-password" spellcheck="false" aria-describedby="password-hint"></label>
+            <button type="button" id="host-password-toggle" class="button secondary" aria-label="显示密码" aria-pressed="false">显示</button>
+          </div>
+          <label class="password-option"><input name="remember_password" type="checkbox">在本机记住密码</label>
+          <p id="password-hint" class="field-hint"></p>
+        </div>
+        <label>分组<input name="group" maxlength="48" placeholder="例如：训练节点"></label>
+        <details class="advanced">
+          <summary>更多选项</summary>
+          <label>已验证的 known_hosts 文件<input name="known_hosts" maxlength="512" placeholder="留空则使用 OpenSSH 默认文件" spellcheck="false"></label>
+          <div class="field-grid">
+            <label>流量参考额度 (GB)<input name="traffic_limit_gb" type="number" min="0.01" step="any" placeholder="可选"></label>
+            <label>到期日期<input name="expires_on" type="date"></label>
+          </div>
+          <label>备注<input name="note" maxlength="300" placeholder="可填写机房、用途或项目名称"></label>
+        </details>
+      </div>
+      <p id="host-connection-result" class="connection-result" role="status" hidden></p>
+      <pre id="host-terminal-command" class="terminal-command" aria-label="SSH 终端命令" tabindex="0" hidden></pre>
+      <p class="form-error" id="host-form-error" role="alert" hidden></p>
+      <footer class="dialog-actions host-dialog-actions">
+        <div class="host-action-group">
+          <button type="button" class="button secondary" id="host-test">测试连接</button>
+          <button type="button" class="button secondary" id="host-terminal">打开 SSH 终端</button>
+          <button type="button" id="host-terminal-manual" class="text-button terminal-fallback" hidden>系统终端</button>
+        </div>
+        <div class="host-action-group">
+          <button type="button" class="button secondary" data-close="host-dialog">取消</button>
+          <button type="submit" class="button primary" id="host-save">保存设备</button>
+        </div>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="detail-dialog" class="dialog detail-dialog" aria-labelledby="detail-title" aria-describedby="detail-address">
+    <header class="dialog-header">
+      <div class="detail-header-identity">
+        <h2 id="detail-title">设备详情</h2>
+        <p id="detail-address"></p>
+      </div>
+      <div class="detail-header-controls">
+        <span id="detail-status"></span>
+        <button type="button" class="icon-button" data-close="detail-dialog" aria-label="关闭" autofocus>×</button>
+      </div>
+    </header>
+    <div id="detail-scroll" class="dialog-body" role="region" aria-label="设备详情内容" tabindex="0">
+      <div id="detail-body" class="detail-sections"></div>
+      <section class="history" aria-labelledby="history-title">
+        <h3 id="history-title">最近 24 小时</h3>
+        <p id="history-status" class="history-status" role="status"></p>
+        <div id="history-charts" class="history-charts"></div>
+      </section>
+    </div>
+    <footer id="detail-actions" class="dialog-actions"></footer>
+  </dialog>
+
+  <dialog id="inventory-dialog" class="dialog inventory-dialog" aria-labelledby="inventory-title">
+    <header class="dialog-header">
+      <div><h2 id="inventory-title">导入 / 导出设备</h2><p>迁移设备列表。导出仅包含连接资料和分组、配额等设置。</p></div>
+      <button type="button" class="icon-button" data-close="inventory-dialog" aria-label="关闭">×</button>
+    </header>
+    <div class="dialog-body form-fields">
+      <label for="inventory-json">设备清单 JSON</label>
+      <textarea id="inventory-json" rows="9" autocomplete="off" spellcheck="false" placeholder="粘贴要导入的设备清单，或点击生成导出"></textarea>
+      <div class="inventory-actions">
+        <input type="file" id="inventory-file" accept=".json,application/json" hidden>
+        <button type="button" class="button secondary" id="inventory-browse">选择 JSON 文件</button>
+        <button type="button" class="button secondary" id="inventory-export">生成导出</button>
+        <button type="button" class="button secondary" id="inventory-select" disabled>选中 JSON</button>
+      </div>
+      <p id="inventory-status" class="connection-result" role="status" hidden></p>
+      <ul id="inventory-targets" class="inventory-targets" aria-label="清单中的设备" hidden></ul>
+    </div>
+    <footer class="dialog-actions">
+      <button type="button" class="button secondary" id="inventory-preview" disabled>预览导入</button>
+      <button type="button" class="button primary" id="inventory-import" disabled>确认导入</button>
+    </footer>
+  </dialog>
+
+  <dialog id="delete-dialog" class="dialog delete-dialog" aria-labelledby="delete-title">
+    <header class="dialog-header">
+      <div><h2 id="delete-title">移除设备</h2><p id="delete-description"></p></div>
+      <button type="button" class="icon-button" data-close="delete-dialog" aria-label="关闭">×</button>
+    </header>
+    <footer class="dialog-actions">
+      <button type="button" class="button secondary" data-close="delete-dialog">取消</button>
+      <button type="button" class="button danger" id="delete-confirm">移除设备</button>
+    </footer>
+  </dialog>
+  <dialog id="network-check-dialog" class="dialog network-check-dialog" aria-labelledby="network-check-title">
+    <header class="dialog-header">
+      <div><h2 id="network-check-title">网络检测</h2><p id="network-check-host"></p></div>
+      <button type="button" class="icon-button" data-close="network-check-dialog" aria-label="关闭网络检测">×</button>
+    </header>
+    <div id="network-check-tabs" class="network-check-tabs" role="tablist" aria-label="检测方式">
+      <button type="button" id="network-check-local-tab" role="tab" aria-selected="true" aria-controls="network-check-local">本机探针</button>
+      <button type="button" id="network-check-outbound-tab" role="tab" aria-selected="false" aria-controls="network-check-outbound" tabindex="-1">VPS 出网测速</button>
+    </div>
+    <section id="network-check-local" class="network-check-panel" role="tabpanel" aria-labelledby="network-check-local-tab" tabindex="0">
+      <div class="dialog-body form-fields">
+        <p class="network-check-direction">由运行星图的电脑向目标发起 ICMP、TCP 或 HTTP 检测。</p>
+        <div id="network-probe-list" class="network-probe-list"></div>
+        <div id="network-probe-delete" class="network-probe-card" hidden>
+          <p id="network-probe-delete-name"></p>
+          <div class="inventory-actions">
+            <button type="button" id="network-probe-delete-confirm" class="button danger">删除</button>
+            <button type="button" id="network-probe-delete-cancel" class="button secondary">取消</button>
+          </div>
+        </div>
+        <section id="network-probe-history" class="network-probe-card" hidden></section>
+        <form id="network-probe-form" class="network-probe-form" autocomplete="off">
+          <div class="field-grid">
+            <label>名称<input name="name" maxlength="80" placeholder="例如 SSH 端口" required></label>
+            <label>类型<select name="type"><option value="tcp">TCP</option><option value="http">HTTP / HTTPS</option><option value="icmp">ICMP Ping</option></select></label>
+          </div>
+          <label>目标<input name="target" maxlength="512" spellcheck="false" required></label>
+          <div class="field-grid">
+            <label>TCP 端口<input name="port" type="number" min="1" max="65535" required></label>
+            <label>间隔（秒）<input name="interval_seconds" type="number" min="30" max="3600" value="60" required></label>
+          </div>
+          <label class="password-option"><input type="checkbox" name="enabled" checked>定时检测</label>
+        </form>
+        <p id="network-probe-status" class="connection-result" role="status" hidden></p>
+      </div>
+      <footer class="dialog-actions">
+        <button type="button" class="button secondary" id="network-probe-reset" hidden>取消编辑</button>
+        <button type="button" class="button primary" id="network-probe-save">添加探针</button>
+      </footer>
+    </section>
+    <section id="network-check-outbound" class="network-check-panel" role="tabpanel" aria-labelledby="network-check-outbound-tab" tabindex="0" hidden>
+      <div class="dialog-body form-fields">
+        <p class="network-check-direction">由这台 VPS 向所选地区的地址发起 ICMP Ping，测量往返延迟和丢包。</p>
+        <fieldset class="outbound-region-fieldset" aria-describedby="outbound-selection-note">
+          <legend>测速地区</legend>
+          <div id="outbound-probe-regions" class="outbound-region-options"></div>
+          <div class="outbound-selection-footer">
+            <p id="outbound-selection-note" class="field-hint" aria-live="polite"></p>
+            <button type="button" class="button secondary" id="outbound-selection-save" disabled>保存为常用地区</button>
+          </div>
+        </fieldset>
+        <fieldset class="outbound-region-fieldset outbound-schedule" aria-describedby="outbound-schedule-help">
+          <legend>定时测速</legend>
+          <label class="password-option"><input type="checkbox" id="outbound-schedule-enabled" disabled>启用定时测速</label>
+          <div class="outbound-schedule-fields">
+            <label>检测间隔（秒）<input type="number" id="outbound-schedule-interval" min="30" max="86400" step="1" value="900" required disabled></label>
+            <label>每个目标发包数<input type="number" id="outbound-schedule-packets" min="1" max="20" step="1" value="5" required disabled></label>
+            <button type="button" class="button secondary" id="outbound-schedule-save" disabled>保存定时设置</button>
+          </div>
+          <div class="inventory-actions outbound-schedule-preset">
+            <button type="button" class="text-button" id="outbound-schedule-recommend" aria-describedby="outbound-schedule-recommendation" disabled>使用推荐参数</button>
+            <span class="field-hint" id="outbound-schedule-recommendation">日常监测每 60 秒测一次，每个目标发 3 包。</span>
+          </div>
+          <p id="outbound-schedule-help" class="field-hint">按常用地区检测。需让本机星图服务保持运行，并配置可自动登录的 SSH。</p>
+          <p id="outbound-schedule-status" class="field-hint" hidden></p>
+          <p id="outbound-schedule-error" class="connection-result" role="status" hidden></p>
+        </fieldset>
+        <div class="outbound-region-picker">
+          <button type="button" class="button secondary" id="outbound-region-add" disabled>添加地区</button>
+          <div id="outbound-region-custom" class="inventory-actions" hidden>
+            <select id="outbound-region-manage" aria-label="选择自定义地区"></select>
+            <button type="button" class="text-button" id="outbound-region-edit">编辑地区</button>
+            <button type="button" class="text-button danger-text" id="outbound-region-delete">删除地区</button>
+          </div>
+        </div>
+        <section id="outbound-region-editor" class="outbound-region-editor" aria-labelledby="outbound-region-editor-title" hidden>
+          <h3 id="outbound-region-editor-title">添加地区</h3>
+          <label>地区名称<input id="outbound-region-name" maxlength="60" placeholder="例如 新加坡" required></label>
+          <div id="outbound-region-targets" class="outbound-region-targets"></div>
+          <div class="inventory-actions">
+            <button type="button" class="button secondary" id="outbound-region-add-target">添加 IP</button>
+            <button type="button" class="text-button" id="outbound-region-cancel">取消</button>
+            <button type="button" class="button primary" id="outbound-region-save">保存地区</button>
+          </div>
+        </section>
+        <div id="outbound-region-confirmation" class="outbound-region-editor" hidden>
+          <p id="outbound-region-confirmation-text"></p>
+          <div class="inventory-actions">
+            <button type="button" class="button secondary" id="outbound-region-keep">取消</button>
+            <button type="button" class="button danger" id="outbound-region-confirm-delete">确认删除</button>
+          </div>
+        </div>
+        <div id="outbound-probe-password-field" hidden>
+          <label>SSH 密码<input id="outbound-probe-password" type="password" maxlength="512" autocomplete="new-password" spellcheck="false" aria-describedby="outbound-probe-password-note"></label>
+          <p id="outbound-probe-password-note">本次检测使用，提交后清空。</p>
+        </div>
+        <div class="outbound-region-results" aria-label="出网检测结果" id="outbound-probe-results" hidden></div>
+        <p class="connection-result" id="outbound-probe-status" role="status" hidden></p>
+      </div>
+      <footer class="dialog-actions">
+        <button type="button" class="button secondary" id="outbound-probe-retest" disabled>复测（20 包）</button>
+        <button type="button" class="button primary" id="outbound-probe-run" disabled>开始检测</button>
+      </footer>
+    </section>
+  </dialog>
+  <dialog id="outbound-history-dialog" class="dialog outbound-history-dialog" aria-labelledby="outbound-history-title">
+    <header class="dialog-header">
+      <div><h2 id="outbound-history-title">测速历史</h2><p id="outbound-history-host"></p></div>
+      <button type="button" class="icon-button" id="outbound-history-close" aria-label="关闭测速历史">×</button>
+    </header>
+    <div class="dialog-body form-fields">
+      <div class="outbound-history-controls">
+        <label>检测来源<select id="outbound-history-source">
+          <option value="all">全部</option>
+          <option value="scheduled">定时</option>
+          <option value="manual">手动</option>
+        </select></label>
+        <button type="button" class="button secondary" id="outbound-history-refresh">刷新历史</button>
+      </div>
+      <p id="outbound-history-status" class="connection-result" role="status" hidden></p>
+      <div id="outbound-history-results"></div>
+    </div>
+  </dialog>
+  <dialog id="outbound-bulk-dialog" class="dialog outbound-bulk-dialog" aria-labelledby="outbound-bulk-title" aria-describedby="outbound-bulk-description">
+    <header class="dialog-header">
+      <div>
+        <h2 id="outbound-bulk-title">批量设置测速地区</h2>
+        <p id="outbound-bulk-description">将所选地区设为这些设备的常用地区，替换它们原来的选择。</p>
+      </div>
+      <button type="button" class="icon-button" data-close="outbound-bulk-dialog" aria-label="关闭">×</button>
+    </header>
+    <div class="dialog-body form-fields">
+      <div class="outbound-bulk-grid">
+        <section class="outbound-bulk-section" aria-labelledby="outbound-bulk-devices-title">
+          <h3 id="outbound-bulk-devices-title">设备</h3>
+          <label class="outbound-bulk-search">
+            <span class="sr-only">搜索批量设置设备</span>
+            <input id="outbound-bulk-search" type="search" placeholder="搜索设备名称、主机或分组" autocomplete="off">
+          </label>
+          <div class="outbound-bulk-list-actions">
+            <button type="button" id="outbound-bulk-select-visible" class="text-button" disabled>全选当前列表</button>
+            <button type="button" id="outbound-bulk-clear-hosts" class="text-button" disabled>清空已选</button>
+          </div>
+          <div id="outbound-bulk-devices" class="outbound-bulk-list" role="group" aria-labelledby="outbound-bulk-devices-title"></div>
+        </section>
+        <section class="outbound-bulk-section" aria-labelledby="outbound-bulk-regions-title">
+          <h3 id="outbound-bulk-regions-title">常用地区</h3>
+          <p id="outbound-bulk-limit" class="field-hint"></p>
+          <div id="outbound-bulk-regions" class="outbound-bulk-list" role="group" aria-labelledby="outbound-bulk-regions-title"></div>
+        </section>
+      </div>
+      <p id="outbound-bulk-status" class="connection-result" role="status" hidden></p>
+    </div>
+    <footer class="dialog-actions">
+      <span id="outbound-bulk-count" class="outbound-bulk-count" aria-live="polite"></span>
+      <button type="button" class="button secondary" id="outbound-bulk-retry" hidden>重新读取地区</button>
+      <button type="button" class="button secondary" data-close="outbound-bulk-dialog">取消</button>
+      <button type="button" class="button primary" id="outbound-bulk-save" disabled>应用到所选设备</button>
+    </footer>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

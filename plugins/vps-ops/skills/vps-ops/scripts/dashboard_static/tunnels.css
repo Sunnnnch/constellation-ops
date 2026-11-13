@@ -1,0 +1,41 @@
+.tunnel-workspace-body, .tunnel-groups { display: grid; gap: 14px; }
+.tunnel-toolbar { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
+.tunnel-toolbar label { flex: 1 1 220px; max-width: 400px; gap: 6px; color: var(--muted); font-size: 13px; }
+.tunnel-toolbar select { min-width: 0; min-height: 39px; }
+.tunnel-editor, .tunnel-group, #tunnel-empty { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.tunnel-editor { padding: 16px; }
+.tunnel-editor h2, .tunnel-group-header h2 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+.tunnel-connection-fields { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+.tunnel-endpoint-fields { grid-template-columns: minmax(110px, 1fr) minmax(0, 1.8fr) minmax(110px, 1fr); }
+.tunnel-automation { padding-top: 10px; border-top: 1px solid var(--border); }
+.tunnel-automation .tunnel-option { grid-template-columns: 16px minmax(0, 1fr); align-content: start; align-items: center; gap: 4px 8px; cursor: pointer; }
+.tunnel-option input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; padding: 0; margin: 0; accent-color: var(--blue); }
+.tunnel-option .field-hint { grid-column: 2; margin: 0; font-weight: 400; }
+#tunnel-automation-password-hint { color: var(--amber); }
+#tunnel-port-hint[data-kind="success"] { color: var(--green); }
+#tunnel-port-hint[data-kind="warning"] { color: var(--amber); }
+.tunnel-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
+.tunnel-group-header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 12px; padding: 13px 15px; }
+.tunnel-group-header > span { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.tunnel-rows { margin: 0; padding: 0; list-style: none; }
+.tunnel-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px 16px; padding: 12px 15px; border-top: 1px solid var(--border); }
+.tunnel-row-title, .tunnel-route { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.tunnel-row-title strong { font-size: 14px; overflow-wrap: anywhere; }
+.tunnel-row-title .tunnel-policy { color: var(--blue); background: var(--blue-soft); }
+.tunnel-route { margin-top: 5px; color: var(--muted); font-size: 13px; }
+.tunnel-route code { max-width: 100%; overflow-wrap: anywhere; }
+.tunnel-message { margin: 6px 0 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.tunnel-row .button { min-height: 34px; padding: 6px 10px; }
+.tunnel-empty { margin: 0; padding: 13px 15px; color: var(--muted); font-size: 13px; }
+.tunnel-group .tunnel-empty { border-top: 1px solid var(--border); }
+:is(#tunnel-password-dialog, #tunnel-delete-dialog) { width: min(95vw, 430px); }
+@media (max-width: 800px) {
+  .tunnel-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .tunnel-summary { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+  .tunnel-toolbar label { flex-basis: 100%; max-width: none; }
+  .tunnel-editor .field-grid { grid-template-columns: minmax(0, 1fr); }
+  .tunnel-row { grid-template-columns: minmax(0, 1fr); }
+  .tunnel-row .tunnel-actions { justify-content: flex-start; }
+}

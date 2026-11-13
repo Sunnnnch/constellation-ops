@@ -1,0 +1,15 @@
+IP Geolocation by DB-IP
+https://db-ip.com/
+
+Source: DB-IP IP to Country Lite, November 2026 edition
+https://db-ip.com/db/download/ip-to-country-lite
+https://download.db-ip.com/free/dbip-country-lite-2026-11.csv.gz
+Published SHA-1 of decompressed CSV: e2061015c43ec91c94a12191a6a613279eb94c0c
+
+The source is licensed under the Creative Commons Attribution 4.0
+International License.
+https://creativecommons.org/licenses/by/4.0/legalcode
+
+VPS Ops converts the CSV to sorted binary ranges for offline lookup.
+The country codes and IP range bounds are unchanged. Unassigned ranges
+marked ZZ are omitted.

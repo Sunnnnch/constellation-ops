@@ -1,0 +1,24 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "vps-ops",
+  "version": "0.24.10",
+  "description": "Manage cloud and local servers from a local dashboard and Codex using SSH.",
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "Constellation Ops · 星图运维",
+        "shortDescription": "Monitor and manage servers over SSH",
+        "longDescription": "Open a multi-device dashboard from the Codex sidebar or a chat tab. Monitor servers, open SSH terminals and tunnels, and browse or transfer files.",
+        "category": "Productivity",
+        "composerIcon": "./assets/vps-ops.png",
+        "logo": "./assets/vps-ops.png",
+        "defaultPrompt": [
+          "Open the Constellation Ops dashboard.",
+          "Read the last 50 log lines from a service on my server.",
+          "Open a local SSH tunnel to Jupyter on my GPU instance."
+        ]
+      }
+    }
+  }
+}
