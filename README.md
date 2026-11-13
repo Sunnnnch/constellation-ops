@@ -1,8 +1,18 @@
-<h1><img src="./plugins/vps-ops/assets/vps-ops.png" alt="" width="36" height="36"> Constellation Ops · 星图运维</h1>
+<p align="center">
+  <img src="./docs/images/constellation-banner.png" alt="Constellation Ops · 星图运维，面向 Codex 的服务器管理面板" width="960">
+</p>
+
+<p align="center">
+  <a href="#install"><strong>安装到 ChatGPT 桌面版的 Codex</strong></a> ·
+  <a href="#preview">查看面板预览</a> ·
+  <a href="#打开设备面板">打开独立网页面板</a>
+</p>
 
 星图是本地 Codex 插件，使用现有 OpenSSH 连接云服务器、GPU 实例、物理机和支持 SSH 的 NAS。设备面板支持分组、搜索、增删改、定时巡检和到期提醒标记。也可通过 Codex 检查系统资源、读取 systemd 日志、传文件和开本机 SSH 隧道。
 
-[安装到 ChatGPT 桌面版的 Codex](#install) · [打开独立网页面板](#打开设备面板)
+<a name="preview"></a>
+
+## 面板预览
 
 ![星图的设备面板，显示四台演示设备及 SSH 延迟和出网 Ping 曲线](./docs/images/dashboard-demo.png)
 
